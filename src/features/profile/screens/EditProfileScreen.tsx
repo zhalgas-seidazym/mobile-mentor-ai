@@ -49,7 +49,8 @@ export function EditProfileScreen() {
   const theme = useAppTheme();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { updateProfile, fetchProfile } = useUserStore();
+  const logout = useAuthStore((s) => s.logout);
+  const { updateProfile, fetchProfile, deleteAccount } = useUserStore();
 
   // Form state
   const [name, setName] = useState(user?.name || '');
@@ -99,6 +100,7 @@ export function EditProfileScreen() {
   const [newPassword, setNewPassword] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const debouncedDirectionQuery = useDebounce(directionQuery, 300);
   const debouncedSkillQuery = useDebounce(skillQuery, 300);
@@ -163,7 +165,7 @@ export function EditProfileScreen() {
     }
     setIsCreatingSkill(true);
     try {
-      const newSkill = await skillsService.create(trimmed);
+      const newSkill = await skillsService.getOrCreateByName(trimmed);
       handleAddSkill(newSkill);
     } catch {
       Alert.alert('Error', 'Failed to add skill. Please try again.');
@@ -223,6 +225,32 @@ export function EditProfileScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account?',
+      'This action is permanent. Your profile and progress will be removed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeletingAccount(true);
+            try {
+              await deleteAccount();
+              await logout();
+              router.replace('/sign-in');
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Failed to delete account');
+            } finally {
+              setIsDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -440,6 +468,19 @@ export function EditProfileScreen() {
             </Button>
           </View>
 
+          <View style={styles.deleteSection}>
+            <Button
+              onPress={handleDeleteAccount}
+              loading={isDeletingAccount}
+              disabled={isDeletingAccount}
+              variant="outline"
+              style={{ borderColor: theme.colors.error.light }}
+              textStyle={{ color: theme.colors.error.light }}
+            >
+              Delete Account
+            </Button>
+          </View>
+
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -558,5 +599,8 @@ const styles = StyleSheet.create({
   },
   saveContainer: {
     marginTop: 8,
+  },
+  deleteSection: {
+    marginTop: 12,
   },
 });

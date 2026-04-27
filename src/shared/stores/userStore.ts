@@ -17,6 +17,7 @@ interface UserActions {
   fetchProfile: () => Promise<void>;
   createProfile: (data: UserProfileCreateSchema) => Promise<UserDTO>;
   updateProfile: (data: UserProfileUpdateSchema) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   fetchStreak: () => Promise<void>;
   fetchStatistics: () => Promise<void>;
   fetchSalary: () => Promise<void>;
@@ -79,6 +80,21 @@ export const useUserStore = create<UserStore>((set) => ({
       const profile = await userService.updateProfile(data);
       set({ profile, isLoading: false });
       useAuthStore.getState().setUser(profile);
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: getErrorMessage(error),
+      });
+      throw error;
+    }
+  },
+
+  deleteAccount: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      await userService.deleteUser();
+      set(initialState);
+      useAuthStore.getState().setUser(null);
     } catch (error) {
       set({
         isLoading: false,

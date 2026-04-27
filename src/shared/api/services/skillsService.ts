@@ -16,11 +16,24 @@ interface GetMySkillsParams extends PaginationParams {
 
 export const skillsService = {
   async create(name: string): Promise<SkillDTO> {
-    // API expects a plain JSON string, so we need to stringify it
-    const response = await apiClient.post<SkillDTO>('/skills', JSON.stringify(name), {
+    const response = await apiClient.post<SkillDTO>('/skills', JSON.stringify(name.trim()), {
       headers: { 'Content-Type': 'application/json' },
     });
     return response.data;
+  },
+
+  async getOrCreateByName(name: string): Promise<SkillDTO> {
+    const normalizedName = name.trim();
+    const response = await this.autocomplete({ q: normalizedName, per_page: 30 });
+    const exactMatch = response.items.find(
+      (skill) => skill.name.trim().toLowerCase() === normalizedName.toLowerCase()
+    );
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    return this.create(normalizedName);
   },
 
   async autocomplete(params?: AutocompleteParams): Promise<PaginatedResponse<SkillDTO>> {

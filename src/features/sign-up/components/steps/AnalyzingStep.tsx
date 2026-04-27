@@ -63,17 +63,8 @@ export function AnalyzingStep() {
       // Get or create skill IDs
       const skillIds: number[] = [];
       for (const skillName of state.selectedSkills) {
-        const skillsResponse = await skillsService.autocomplete({
-          q: skillName,
-          per_page: 1,
-        });
-
-        if (skillsResponse.items.length > 0) {
-          skillIds.push(skillsResponse.items[0].id);
-        } else {
-          const newSkill = await skillsService.create(skillName);
-          skillIds.push(newSkill.id);
-        }
+        const skill = await skillsService.getOrCreateByName(skillName);
+        skillIds.push(skill.id);
       }
 
       await createProfile({
