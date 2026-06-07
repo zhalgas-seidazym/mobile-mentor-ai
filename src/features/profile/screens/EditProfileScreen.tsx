@@ -145,6 +145,20 @@ export function EditProfileScreen() {
     setShowDirectionDropdown(false);
   };
 
+  const handleCreateAndSelectDirection = async () => {
+    const trimmed = directionQuery.trim();
+    if (!trimmed) return;
+    setIsCreatingDirection(true);
+    try {
+      const newDirection = await directionsService.create(trimmed);
+      handleSelectDirection(newDirection);
+    } catch {
+      Alert.alert('Error', 'Failed to add direction. Please try again.');
+    } finally {
+      setIsCreatingDirection(false);
+    }
+  };
+
   const handleAddSkill = (skill: SkillDTO) => {
     setSelectedSkills((prev) => [...prev, skill]);
     setSkillQuery('');
@@ -153,6 +167,7 @@ export function EditProfileScreen() {
   };
 
   const [isCreatingSkill, setIsCreatingSkill] = useState(false);
+  const [isCreatingDirection, setIsCreatingDirection] = useState(false);
 
   const handleCreateAndAddSkill = async () => {
     const trimmed = skillQuery.trim();
@@ -336,17 +351,42 @@ export function EditProfileScreen() {
                 onFocus={() => setShowDirectionDropdown(true)}
                 onBlur={() => setTimeout(() => setShowDirectionDropdown(false), 200)}
               />
-              {showDirectionDropdown && directionResults.length > 0 && (
+              {showDirectionDropdown && (directionResults.length > 0 || directionQuery.trim()) && (
                 <View style={[styles.dropdown, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border.default }]}>
-                  {directionResults.map((dir) => (
+                  {directionResults.length > 0 && (
+                    <ScrollView keyboardShouldPersistTaps="handled" style={styles.dropdownScroll}>
+                      {directionResults.map((dir) => (
+                        <TouchableOpacity
+                          key={dir.id}
+                          style={[styles.dropdownItem, { borderBottomColor: theme.colors.border.default }]}
+                          onPress={() => handleSelectDirection(dir)}
+                        >
+                          <Text style={{ color: theme.colors.text.primary }}>{dir.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
+                  {directionQuery.trim() && (
+                    debouncedDirectionQuery !== directionQuery.trim() ||
+                    !directionResults.some((d) => d.name.toLowerCase() === directionQuery.trim().toLowerCase())
+                  ) && (
                     <TouchableOpacity
-                      key={dir.id}
                       style={[styles.dropdownItem, { borderBottomColor: theme.colors.border.default }]}
-                      onPress={() => handleSelectDirection(dir)}
+                      onPress={handleCreateAndSelectDirection}
+                      disabled={isCreatingDirection}
                     >
-                      <Text style={{ color: theme.colors.text.primary }}>{dir.name}</Text>
+                      <View style={styles.createSkillRow}>
+                        {isCreatingDirection ? (
+                          <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                        ) : (
+                          <Ionicons name="add-circle-outline" size={18} color={theme.colors.primary[500]} />
+                        )}
+                        <Text style={{ color: theme.colors.primary[500], fontWeight: '600', marginLeft: 8 }}>
+                          Add "{directionQuery.trim()}"
+                        </Text>
+                      </View>
                     </TouchableOpacity>
-                  ))}
+                  )}
                 </View>
               )}
             </View>
@@ -392,15 +432,19 @@ export function EditProfileScreen() {
               />
               {showSkillDropdown && (skillResults.length > 0 || skillQuery.trim()) && (
                 <View style={[styles.dropdown, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border.default }]}>
-                  {skillResults.map((skill) => (
-                    <TouchableOpacity
-                      key={skill.id}
-                      style={[styles.dropdownItem, { borderBottomColor: theme.colors.border.default }]}
-                      onPress={() => handleAddSkill(skill)}
-                    >
-                      <Text style={{ color: theme.colors.text.primary }}>{skill.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {skillResults.length > 0 && (
+                    <ScrollView keyboardShouldPersistTaps="handled" style={styles.dropdownScroll}>
+                      {skillResults.map((skill) => (
+                        <TouchableOpacity
+                          key={skill.id}
+                          style={[styles.dropdownItem, { borderBottomColor: theme.colors.border.default }]}
+                          onPress={() => handleAddSkill(skill)}
+                        >
+                          <Text style={{ color: theme.colors.text.primary }}>{skill.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
                   {skillQuery.trim() && !skillResults.some((s) => s.name.toLowerCase() === skillQuery.trim().toLowerCase()) && (
                     <TouchableOpacity
                       style={[styles.dropdownItem, { borderBottomColor: theme.colors.border.default }]}
@@ -544,8 +588,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
-    maxHeight: 200,
-    overflow: 'hidden',
+  },
+  dropdownScroll: {
+    maxHeight: 160,
   },
   dropdownItem: {
     paddingHorizontal: 16,
